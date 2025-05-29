@@ -11,6 +11,7 @@ SOURCE = \
 	main.cpp \
 	mapwindow.cpp \
 	sniffer.cpp \
+	tui.cpp \
 
 INCLUDES = \
 	src \
@@ -22,11 +23,13 @@ CXX_FLAGS = \
 	${shell pkg-config --cflags chafa} \
 	${shell pkg-config --cflags cairo} \
 	${shell pkg-config --cflags libtins} \
+	${shell pkg-config --cflags ncurses} \
 	
 LNK_FLAGS = \
 	${shell pkg-config --libs chafa} \
 	${shell pkg-config --libs cairo} \
-	${shell pkg-config --libs libtins}
+	${shell pkg-config --libs libtins} \
+	${shell pkg-config --libs ncurses} \
 
 # All .o files go to build dir.
 CXX_OBJ = $(SOURCE:%.cpp=$(BUILD_DIR)/%.o)

@@ -11,6 +11,8 @@ namespace Netstring::Sniffer{
   };
 
   void start_sniffing(std::string iface_name, std::function<void()> on_packet);
+  void stop_sniffing();
   const std::vector<Tins::IP::address_type> &getKnownHosts();
   const std::deque<packetInfo> &getPackets();
+  const Tins::IP::address_type &getLocalAddress();
 }

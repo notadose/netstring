@@ -19,6 +19,7 @@
         pkgs.libpcap
         pkgs.cairo
         pkgs.gdb
+        pkgs.ncurses
       ];
     };
   };

@@ -1,10 +1,11 @@
 #include <functional>
 #include <tins/tins.h>
-#include <iostream>
 #include <unordered_map>
 #include <vector>
 #include <deque>
 #include <mutex>
+#include <thread>
+#include <atomic>
 
 #include "sniffer.hpp"
 
@@ -12,6 +13,8 @@ std::function<void()> nextOnPacket;
 
 
 const unsigned int MAX_PACKETS = 1024;
+
+Tins::IP::address_type localAddress;
 
 std::mutex packetsMutex; // For packets, knownHosts, and hostKnownMap
 std::deque<Netstring::Sniffer::packetInfo> packets;
@@ -27,6 +30,8 @@ void handleHost(const Tins::IP::address_type &host){
   hostKnownMap[host] = true;
   knownHosts.push_back(host);
 }
+
+std::atomic<bool> shouldStop(false);
 
 bool packet_callback(const Tins::PDU &pdu){
   const Tins::IP *ip_layer = pdu.find_pdu<Tins::IP>();
@@ -54,23 +59,46 @@ bool packet_callback(const Tins::PDU &pdu){
 
   lock.unlock();
 
-  return true;
+  return !shouldStop.load();
 }
+
+std::unique_ptr<Tins::Sniffer> sniffer = nullptr;
+std::thread sniffThread;
 
 void Netstring::Sniffer::start_sniffing(
   std::string iface_name,
   std::function<void()> on_packet
 ){
+  shouldStop = false;
   nextOnPacket = on_packet;
-  Tins::NetworkInterface iface;
-  Tins::NetworkInterface::Info info;
+  if(sniffer != nullptr) return;
 
-  Tins::SnifferConfiguration config;
-  config.set_immediate_mode(true);
+  sniffThread = std::thread([&]() -> void {
+    Tins::NetworkInterface iface = iface_name;
+    Tins::NetworkInterface::Info info = iface.info();
 
-  Tins::Sniffer(iface_name, config).sniff_loop(packet_callback);
+    localAddress = info.ip_addr;
 
-  std::cout << "exit" << std::endl;
+    Tins::SnifferConfiguration config;
+    config.set_immediate_mode(true);
+
+    sniffer = std::make_unique<Tins::Sniffer>(iface_name, config);
+    sniffer->sniff_loop(packet_callback);
+  });
+}
+
+void Netstring::Sniffer::stop_sniffing(){
+  if(!sniffer) return;
+  shouldStop = true;
+
+  sniffer->stop_sniff();
+
+  if(sniffThread.joinable()){
+    sniffThread.join();
+  }
+
+  sniffer.reset();
+  //stop_sniff() should kill sniff_thread
 }
 
 const std::vector<Tins::IP::address_type> &Netstring::Sniffer::getKnownHosts(){
@@ -79,4 +107,8 @@ const std::vector<Tins::IP::address_type> &Netstring::Sniffer::getKnownHosts(){
 
 const std::deque<Netstring::Sniffer::packetInfo> &Netstring::Sniffer::getPackets(){
   return packets;
+}
+
+const Tins::IP::address_type &Netstring::Sniffer::getLocalAddress(){
+  return localAddress;
 }
