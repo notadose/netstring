@@ -7,6 +7,7 @@
 #include <shared_mutex>
 
 #include "mapwindow.hpp"
+#include "glib.h"
 #include "sniffer.hpp"
 
 struct color{
@@ -29,7 +30,7 @@ const color LINE_COLOR = color{
 };
 
 const color BG_COLOR = color{
-  .r=0.0,.g=0.0,.b=0.0,.a=1.0
+  .r=0.0,.g=0.0,.b=0.0,.a=0.0
 };
 
 void getHostLocation(Tins::IP::address_type &host, float *loc_x, float *loc_y){
@@ -43,6 +44,11 @@ void getHostLocation(Tins::IP::address_type &host, float *loc_x, float *loc_y){
 
   *loc_x = float(std::rand()) / RAND_MAX;
   *loc_y = float(std::rand()) / RAND_MAX;
+
+  if(host == Netstring::Sniffer::getLocalAddress()){
+    *loc_x = 0.5;
+    *loc_y = 0.5;
+  }
 }
 
 guint16 map_term_width = 20;
@@ -158,5 +164,16 @@ void Netstring::Map::onPacket() {
 GString *Netstring::Map::getMapString(){
   std::shared_lock sharedLock(stringMutex);
   return g_string_new(mapString->str);
+}
+
+void Netstring::Map::drawMap(){
+  std::shared_lock sharedLock(stringMutex);
+
+  // Erase images at cursor position in kitty protocol:
+  fputs("\033_Ga=d;d=C\033\\", stdout);
+
+  // Send image string to stdout
+  fwrite(mapString->str, sizeof(char), mapString->len, stdout);
+  fputc('\n', stdout);
 }
 

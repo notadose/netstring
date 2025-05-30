@@ -30,7 +30,6 @@ void Netstring::Tui::update(){
   if(!running.load()) return;
 
   Netstring::Map::setMapSize(getmaxx(mapwindow) - 4, getmaxy(mapwindow) - 4);
-  GString *mapString = Netstring::Map::getMapString();
   
   werase(mapwindow);
 
@@ -38,10 +37,6 @@ void Netstring::Tui::update(){
 
   printf("\033[%i;%iH", getcurx(mapwindow), getcury(mapwindow));
   fflush(stdout);
-
-  fwrite(mapString->str, sizeof(char), mapString->len, stdout);
-  fputc('\n', stdout);
-
-  g_string_free(mapString, TRUE);
+  Netstring::Map::drawMap();
 
 }
